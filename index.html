@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#141a1f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Tap &amp; Drill</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root{
+    --bg:#141a1f;
+    --panel:#1c252c;
+    --panel-2:#243038;
+    --line:#33434e;
+    --steel:#8fa6b2;
+    --ink:#eef4f7;
+    --dim:#8b9aa5;
+    --amber:#f2a84b;
+    --amber-ink:#141a1f;
+    --cut:#5bb0c9;
+    --form:#c98a5b;
+    --result:#243038;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    min-height:100vh;
+  }
+  .wrap{max-width:560px;margin:0 auto;padding:18px 16px 40px}
+
+  header{display:flex;align-items:baseline;justify-content:space-between;margin:4px 0 20px}
+  header h1{
+    font-size:15px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;margin:0;
+    color:var(--steel);
+  }
+  header .tick{
+    font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11px;color:var(--dim);
+    border:1px solid var(--line);border-radius:4px;padding:3px 7px;letter-spacing:.05em;
+  }
+
+  .group{margin-bottom:18px}
+  .lbl{
+    font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--dim);margin:0 0 8px 2px;display:flex;align-items:center;gap:7px;
+  }
+  .lbl .n{
+    font-family:ui-monospace,monospace;color:var(--amber);font-size:11px;
+  }
+
+  /* segmented toggles */
+  .seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{
+    flex:1;border:0;background:transparent;color:var(--dim);
+    font-size:14px;font-weight:700;letter-spacing:.02em;padding:11px 6px;border-radius:7px;
+    cursor:pointer;transition:.15s;
+  }
+  .seg button.on{background:var(--amber);color:var(--amber-ink)}
+  .seg.tap button.on[data-v="cut"]{background:var(--cut);color:#08181d}
+  .seg.tap button.on[data-v="form"]{background:var(--form);color:#1d1108}
+
+  select,.pill{
+    width:100%;background:var(--panel);color:var(--ink);border:1px solid var(--line);
+    border-radius:10px;padding:14px 14px;font-size:16px;font-weight:600;appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'><path d='M5 8l5 5 5-5' stroke='%238fa6b2' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;background-position:right 12px center;padding-right:40px;
+  }
+  select:focus{outline:2px solid var(--amber);outline-offset:1px}
+
+  /* depth slider */
+  .depthrow{display:flex;align-items:center;gap:14px}
+  .depthval{
+    font-family:ui-monospace,monospace;font-size:30px;font-weight:700;color:var(--amber);
+    min-width:78px;text-align:right;line-height:1;
+  }
+  input[type=range]{flex:1;-webkit-appearance:none;height:6px;border-radius:3px;
+    background:linear-gradient(90deg,var(--amber) var(--fill,50%),var(--line) var(--fill,50%));outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;
+    background:var(--amber);border:3px solid var(--bg);box-shadow:0 2px 6px rgba(0,0,0,.4)}
+  .depthhint{font-size:11px;color:var(--dim);margin:8px 2px 0;text-align:center}
+
+  .clr-toggle{display:flex;align-items:center;justify-content:space-between;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .clr-toggle span{font-size:14px;font-weight:600}
+  .switch{width:50px;height:28px;border-radius:14px;background:var(--line);position:relative;transition:.2s;flex:none}
+  .switch.on{background:var(--amber)}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;
+    background:#fff;transition:.2s}
+  .switch.on::after{left:25px}
+  .fit{margin-top:12px}
+  .fit.hide{display:none}
+
+  /* results */
+  .result{
+    margin-top:24px;background:var(--result);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  }
+  .rhead{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .rhead .sz{font-size:18px;font-weight:800;letter-spacing:.02em}
+  .rhead .tag{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+    padding:4px 9px;border-radius:5px}
+  .tag.cut{background:rgba(91,176,201,.16);color:var(--cut)}
+  .tag.form{background:rgba(201,138,91,.16);color:var(--form)}
+
+  .rrow{display:flex;align-items:flex-end;justify-content:space-between;padding:16px 18px;gap:12px}
+  .rrow+.rrow{border-top:1px solid var(--line)}
+  .rrow .k{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+  .rrow .sub{font-size:11px;color:var(--dim);margin-top:3px;font-weight:500;letter-spacing:0;text-transform:none}
+  .rrow .v{font-family:ui-monospace,monospace;font-size:28px;font-weight:700;line-height:1;text-align:right}
+  .rrow .v small{font-size:13px;color:var(--dim);font-weight:600}
+  .v.amber{color:var(--amber)}
+  .v.steel{color:var(--steel)}
+
+  .drow{display:flex;align-items:center;justify-content:space-between;
+    padding:11px 18px;background:rgba(242,168,75,.06);border-top:1px dashed var(--line);gap:12px}
+  .drow .dname{font-size:20px;font-weight:800;letter-spacing:.01em;color:var(--ink)}
+  .drow .ddec{font-family:ui-monospace,monospace;font-size:12px;color:var(--dim);text-align:right}
+  .drow .dover{display:block;font-size:10px;color:var(--amber);margin-top:2px;font-weight:700}
+
+  .note{font-size:11px;color:var(--dim);line-height:1.5;margin:16px 4px 0;text-align:center}
+  .empty{padding:34px 18px;text-align:center;color:var(--dim);font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Tap &amp; Drill</h1>
+    <div class="tick" id="modeTick">METRIC</div>
+  </header>
+
+  <div class="group">
+    <div class="lbl"><span class="n">01</span> Standard</div>
+    <div class="seg" id="unitSeg">
+      <button data-v="imperial" class="on">Imperial</button>
+      <button data-v="metric">Metric</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="lbl"><span class="n">02</span> Screw size</div>
+    <select id="sizeSel"></select>
+  </div>
+
+  <div class="group">
+    <div class="lbl"><span class="n">03</span> Thread depth</div>
+    <div class="depthrow">
+      <input type="range" id="depth" min="50" max="90" step="5" value="75">
+      <div class="depthval"><span id="depthNum">75</span><small style="font-size:16px">%</small></div>
+    </div>
+    <div class="depthhint">Lower % = easier tapping · Higher % = stronger thread (75% is standard)</div>
+  </div>
+
+  <div class="group">
+    <div class="lbl"><span class="n">04</span> Tap type</div>
+    <div class="seg tap" id="tapSeg">
+      <button data-v="cut" class="on">Cut tap</button>
+      <button data-v="form">Form tap</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="clr-toggle" id="clrToggle">
+      <span>Show clearance hole</span>
+      <div class="switch" id="clrSwitch"></div>
+    </div>
+    <div class="group fit hide" id="fitGroup" style="margin-top:12px;margin-bottom:0">
+      <div class="lbl" style="margin-top:4px"><span class="n">05</span> Clearance fit</div>
+      <div class="seg" id="fitSeg">
+        <button data-v="close">Close</button>
+        <button data-v="normal" class="on">Normal</button>
+        <button data-v="loose">Loose</button>
+      </div>
+    </div>
+    <div class="clr-toggle" id="metricToggle" style="margin-top:12px">
+      <span>Include metric drills</span>
+      <div class="switch" id="metricSwitch"></div>
+    </div>
+  </div>
+
+  <div class="result" id="result"></div>
+  <div class="note">Drill sizes are calculated nominal values. Verify against your material, tap manufacturer specs, and always do a test hole on scrap.</div>
+</div>
+
+<script>
+/* ---------- DATA ----------
+   Metric: [label, majorDia(mm), pitch(mm)]
+   Imperial: [label, majorDia(in), TPI] */
+const DATA = {
+  metric: [
+    ["M1.6 × 0.35",1.6,0.35],["M2 × 0.4",2,0.4],["M2.5 × 0.45",2.5,0.45],
+    ["M3 × 0.5",3,0.5],["M3.5 × 0.6",3.5,0.6],["M4 × 0.7",4,0.7],
+    ["M5 × 0.8",5,0.8],["M6 × 1.0",6,1.0],["M7 × 1.0",7,1.0],
+    ["M8 × 1.25",8,1.25],["M8 × 1.0 (fine)",8,1.0],["M10 × 1.5",10,1.5],
+    ["M10 × 1.25 (fine)",10,1.25],["M12 × 1.75",12,1.75],["M12 × 1.25 (fine)",12,1.25],
+    ["M14 × 2.0",14,2.0],["M16 × 2.0",16,2.0],["M18 × 2.5",18,2.5],
+    ["M20 × 2.5",20,2.5],["M24 × 3.0",24,3.0]
+  ],
+  imperial: [
+    ["#0 × 80",0.060,80],["#1 × 64",0.073,64],["#2 × 56",0.086,56],
+    ["#3 × 48",0.099,48],["#4 × 40",0.112,40],["#5 × 40",0.125,40],
+    ["#6 × 32",0.138,32],["#8 × 32",0.164,32],["#10 × 24",0.190,24],
+    ["#10 × 32 (fine)",0.190,32],["#12 × 24",0.216,24],
+    ['1/4" × 20',0.250,20],['1/4" × 28 (fine)',0.250,28],
+    ['5/16" × 18',0.3125,18],['5/16" × 24 (fine)',0.3125,24],
+    ['3/8" × 16',0.375,16],['3/8" × 24 (fine)',0.375,24],
+    ['7/16" × 14',0.4375,14],['1/2" × 13',0.500,13],
+    ['1/2" × 20 (fine)',0.500,20],['9/16" × 12',0.5625,12],
+    ['5/8" × 11',0.625,11],['3/4" × 10',0.750,10]
+  ]
+};
+
+/* Clearance factors (× major dia) — ASME/ISO style */
+const FIT = { close:1.05, normal:1.11, loose:1.19 };
+
+/* ---------- STANDARD DRILL INVENTORY (all in mm) ----------
+   Each entry: [name, diameterMM]. Combined fractional, number, letter, and metric bits. */
+const DRILLS = (()=>{
+  const list=[];
+  const inch=(name,d)=>list.push([name, d*25.4, "imp"]);
+  // Fractional (1/64" steps up to 3/4")
+  const fracNames={ "1/64":1/64,"1/32":1/32,"3/64":3/64,"1/16":1/16,"5/64":5/64,"3/32":3/32,
+    "7/64":7/64,"1/8":1/8,"9/64":9/64,"5/32":5/32,"11/64":11/64,"3/16":3/16,"13/64":13/64,
+    "7/32":7/32,"15/64":15/64,"1/4":1/4,"17/64":17/64,"9/32":9/32,"19/64":19/64,"5/16":5/16,
+    "21/64":21/64,"11/32":11/32,"23/64":23/64,"3/8":3/8,"25/64":25/64,"13/32":13/32,
+    "27/64":27/64,"7/16":7/16,"29/64":29/64,"15/32":15/32,"31/64":31/64,"1/2":1/2,
+    "33/64":33/64,"17/32":17/32,"35/64":35/64,"9/16":9/16,"37/64":37/64,"19/32":19/32,
+    "39/64":39/64,"5/8":5/8,"41/64":41/64,"21/32":21/32,"43/64":43/64,"11/16":11/16,
+    "45/64":45/64,"23/32":23/32,"47/64":47/64,"3/4":3/4 };
+  for(const n in fracNames) inch(n+'"', fracNames[n]);
+  // Number drills #1–#80 (dia in inches)
+  const num={1:.2280,2:.2210,3:.2130,4:.2090,5:.2055,6:.2040,7:.2010,8:.1990,9:.1960,10:.1935,
+    11:.1910,12:.1890,13:.1850,14:.1820,15:.1800,16:.1770,17:.1730,18:.1695,19:.1660,20:.1610,
+    21:.1590,22:.1570,23:.1540,24:.1520,25:.1495,26:.1470,27:.1440,28:.1405,29:.1360,30:.1285,
+    31:.1200,32:.1160,33:.1130,34:.1110,35:.1100,36:.1065,37:.1040,38:.1015,39:.0995,40:.0980,
+    41:.0960,42:.0935,43:.0890,44:.0860,45:.0820,46:.0810,47:.0785,48:.0760,49:.0730,50:.0700,
+    51:.0670,52:.0635,53:.0595,54:.0550,55:.0520,56:.0465,57:.0430,58:.0420,59:.0410,60:.0400,
+    61:.0390,62:.0380,63:.0370,64:.0360,65:.0350,66:.0330,67:.0320,68:.0310,69:.0292,70:.0280,
+    71:.0260,72:.0250,73:.0240,74:.0225,75:.0210,76:.0200,77:.0180,78:.0160,79:.0145,80:.0135};
+  for(const n in num) inch("#"+n, num[n]);
+  // Letter drills A–Z
+  const let_={A:.234,B:.238,C:.242,D:.246,E:.250,F:.257,G:.261,H:.266,I:.272,J:.277,K:.281,
+    L:.290,M:.295,N:.302,O:.316,P:.323,Q:.332,R:.339,S:.348,T:.358,U:.368,V:.377,W:.386,
+    X:.397,Y:.404,Z:.413};
+  for(const n in let_) inch(n, let_[n]);
+  // Metric bits: 0.5–13mm in 0.1 steps, then 0.5 steps to 24
+  for(let d=5;d<=130;d++) list.push([(d/10).toFixed(1)+" mm", d/10, "met"]);
+  for(let d=135;d<=240;d+=5) list.push([(d/10).toFixed(1)+" mm", d/10, "met"]);
+  return list;
+})();
+
+/* Nearest drill AT OR ABOVE the target (so the tapped hole is never undersized),
+   plus the closest overall. Returns the "at-or-above" pick, falling back to nearest. */
+function nearestDrill(targetMM){
+  let above=null, nearest=null, bestAbove=1e9, bestAny=1e9;
+  for(const [name,d,type] of DRILLS){
+    if(type==="met" && !state.showMetric) continue;
+    const diff=d-targetMM, ad=Math.abs(diff);
+    if(ad<bestAny){bestAny=ad;nearest=[name,d];}
+    if(diff>=-0.0001 && diff<bestAbove){bestAbove=diff;above=[name,d];}
+  }
+  const pick = above || nearest;
+  return { name:pick[0], dia:pick[1], over:pick[1]-targetMM };
+}
+
+const state = { unit:"imperial", idx:0, depth:75, tap:"cut", showClr:false, fit:"normal", showMetric:false };
+
+const $=s=>document.querySelector(s);
+
+function pitchMM(row){ // returns pitch in mm for either system
+  return state.unit==="metric" ? row[2] : 25.4/row[2];
+}
+function majorMM(row){
+  return state.unit==="metric" ? row[1] : row[1]*25.4;
+}
+
+/* Cut-tap drill: major − (depth% /100) × pitch × (1.0825)  [derived from 76.98% baseline] */
+function cutDrillMM(row){
+  const p=pitchMM(row), maj=majorMM(row);
+  return maj - (state.depth/76.98) * 0.6495 * p; // 0.6495 = single thread height factor
+}
+/* Form (roll) tap drill: major − (depth% /100) × pitch × 0.5 (thread displaced not cut) */
+function formDrillMM(row){
+  const p=pitchMM(row), maj=majorMM(row);
+  return maj - (state.depth/100) * p * 0.5;
+}
+function clearanceMM(row){ return majorMM(row) * FIT[state.fit]; }
+
+const mm2in=v=>v/25.4;
+function fmt(mm){
+  if(state.unit==="metric") return {v:mm.toFixed(2), u:"mm", alt:'('+mm2in(mm).toFixed(3)+'")'};
+  return {v:mm2in(mm).toFixed(3), u:'"', alt:'('+mm.toFixed(2)+' mm)'};
+}
+
+function buildSizes(){
+  const sel=$("#sizeSel"); sel.innerHTML="";
+  DATA[state.unit].forEach((r,i)=>{
+    const o=document.createElement("option"); o.value=i; o.textContent=r[0]; sel.appendChild(o);
+  });
+  if(state.idx>=DATA[state.unit].length) state.idx=0;
+  sel.value=state.idx;
+}
+
+function render(){
+  $("#modeTick").textContent=state.unit.toUpperCase();
+  const row=DATA[state.unit][state.idx];
+  const tapDrill = state.tap==="cut"?cutDrillMM(row):formDrillMM(row);
+  const td=fmt(tapDrill);
+  const tapClass = state.tap;
+  let html=`
+    <div class="rhead">
+      <div class="sz">${row[0]}</div>
+      <div class="tag ${tapClass}">${state.tap==="cut"?"Cut tap":"Form tap"}</div>
+    </div>`;
+  html+=drillBlock("Tap drill", `${state.depth}% thread engagement`, tapDrill, "amber");
+  if(state.showClr){
+    html+=drillBlock("Clearance hole", `${state.fit} fit`, clearanceMM(row), "steel");
+  }
+  $("#result").innerHTML=html;
+}
+
+/* Renders one result section: calculated target + nearest standard drill (name + decimals) */
+function drillBlock(label, sub, targetMM, cls){
+  const t=fmt(targetMM);
+  const nd=nearestDrill(targetMM);
+  const ndDec = state.unit==="metric"
+    ? `${nd.dia.toFixed(2)} mm · ${mm2in(nd.dia).toFixed(4)}"`
+    : `${mm2in(nd.dia).toFixed(4)}" · ${nd.dia.toFixed(2)} mm`;
+  const over = state.unit==="metric"
+    ? `+${nd.over.toFixed(2)} mm`
+    : `+${mm2in(nd.over).toFixed(4)}"`;
+  return `
+    <div class="rrow">
+      <div><div class="k">${label}</div><div class="sub">${sub}</div></div>
+      <div class="v ${cls}">${t.v}<small>${t.u}</small><div class="sub" style="text-align:right">${t.alt}</div></div>
+    </div>
+    <div class="drow">
+      <div class="dname">${nd.name}</div>
+      <div class="ddec">${ndDec}<span class="dover">${over}</span></div>
+    </div>`;
+}
+
+/* segmented control helper */
+function wireSeg(id, key, cb){
+  $(id).addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b)return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove("on"));
+    b.classList.add("on"); state[key]=b.dataset.v; cb&&cb(); render();
+  });
+}
+
+wireSeg("#unitSeg","unit",()=>{ state.idx=0; buildSizes(); });
+wireSeg("#tapSeg","tap");
+wireSeg("#fitSeg","fit");
+
+$("#sizeSel").addEventListener("change",e=>{state.idx=+e.target.value;render();});
+
+const depth=$("#depth");
+function depthFill(){const p=((state.depth-50)/40)*100;depth.style.setProperty("--fill",p+"%");}
+depth.addEventListener("input",e=>{
+  state.depth=+e.target.value; $("#depthNum").textContent=state.depth; depthFill(); render();
+});
+
+$("#clrToggle").addEventListener("click",()=>{
+  state.showClr=!state.showClr;
+  $("#clrSwitch").classList.toggle("on",state.showClr);
+  $("#fitGroup").classList.toggle("hide",!state.showClr);
+  render();
+});
+
+$("#metricToggle").addEventListener("click",()=>{
+  state.showMetric=!state.showMetric;
+  $("#metricSwitch").classList.toggle("on",state.showMetric);
+  render();
+});
+
+buildSizes(); depthFill(); render();
+
+/* PWA */
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+</script>
+</body>
+</html>
